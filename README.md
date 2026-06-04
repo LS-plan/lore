@@ -1,8 +1,21 @@
-# Lore
+<p align="center">
+  <img src="assets/lore-icon.png" width="180" alt="Lore Logo" />
+</p>
 
-**项目经验框架** — 让 AI Agent 在项目中积累、检索和淘汰工程经验。
+<h1 align="center">Lore</h1>
 
-Lore 是一个目录约定（`.lore/`），为 AI Agent 提供一个结构化的地方来管理项目级工程经验。它不依赖任何特定平台——任何能读文件的 LLM 都能用（Claude Code、Codex、Gemini、Cursor 等）。
+<p align="center">
+  <b>项目经验框架</b> — 让 AI Agent 在项目中积累、检索和淘汰工程经验。<br/>
+  <b>Project Experience Framework</b> — Let AI agents accumulate, retrieve, and retire engineering experiences within projects.
+</p>
+
+<p align="center">
+  <a href="#快速开始">快速开始</a> · <a href="#quick-start">Quick Start</a> · <a href="#目录结构">目录结构</a> · <a href="#directory-structure">Directory Structure</a>
+</p>
+
+---
+
+# 中文
 
 ## 为什么需要 Lore
 
@@ -13,8 +26,6 @@ AI 编码 Agent 跨会话是无状态的。每次新对话，Agent 都会忘记�
 - 这个项目有什么特有的工程模式
 - 哪些坑需要避免
 
-现有方案各有局限：
-
 | 方案 | 做了什么 | 缺什么 |
 |------|---------|--------|
 | CLAUDE.md / AGENTS.md | 全局行为规则 | 没有项目级经验，没有生命周期 |
@@ -23,6 +34,8 @@ AI 编码 Agent 跨会话是无状态的。每次新对话，Agent 都会忘记�
 | Skills | 可复用操作流程 | 不积累知识，没有验证机制 |
 
 **Lore 填补的空白**：项目级、经过验证、有生命周期管理的工程经验。
+
+Lore 是一个目录约定（`.lore/`），为 AI Agent 提供一个结构化的地方来管理项目级工程经验。它不依赖任何特定平台——任何能读文件的 LLM 都能用（Claude Code、Codex、Gemini、Cursor 等）。
 
 ---
 
@@ -91,35 +104,35 @@ rm -rf /tmp/lore
 
 ---
 
-## 使用指南
+## 安装后 LLM 的预期行为
 
-### 日常工作流
+安装 Lore 后，AI Agent 在会话中应当表现出以下行为模式：
 
-```
-1. Agent 启动 → 读 .lore/INDEX.md
-2. 匹配当前任务关键词 → 决定加载哪些经验
-3. 执行任务，应用已有经验
-4. 任务完成后 →
-   - 发现了新的可复用经验？写入 experiences/，更新索引
-   - 只是一次性操作？不写入
-   - 遇到了问题但没解决？记录到 runs/
-```
+### 首次接触项目
 
-### 写入经验的时机
+- **自动形成项目理解**：Agent 首次接触包含 `.lore/` 的项目时，默认先读取 `identity.md`、`INDEX.md`、`glossary.md` 等文件，主动建立对项目的全局理解——不需要用户额外授权或确认这一步
+- **自动识别项目信息**：项目名称、技术栈等应从 `.lore/identity.md` 和项目目录结构中主动识别，而非反复询问用户
 
-**应该写入**（到 `experiences/`）：
-- 修了一个非显而易见的 bug，下次可能再遇到
-- 发现了项目特有的部署坑
-- 找到了某个工具的正确使用姿势
-- 解决了一个配置问题，有明确的验证方式
+### 执行任务
 
-**不应该写入**：
-- 一次性操作（改个文案、调个参数）
-- 未验证的猜测
-- 通用编程知识（Agent 已经知道）
-- 用户个人偏好（那是 Agent 级记忆的事）
+- **计划先行**：用户提出一个诉求后，Agent 先给出完整的计划（包括涉及的文件、步骤、可能命中的工程经验），然后针对需要用户确认的具体细节（比如是否初始化 git、是否创建新目录等）逐一确认
+- **经验命中提示**：当任务命中了某条已有工程经验时，在计划中引用该经验并简要说明
+- **渐进式确认**：对于细节问题，逐步确认直到形成完整理解，而不是一次性抛出大量问题
 
-### 经验文件怎么写
+### 防止停滞
+
+- **主动推进**：如果连续几轮对话进展不明显（比如反复确认同一个问题、或用户没有给出明确指示），Agent 应主动询问："要不要先按当前理解开始做？后续可以再调整。"
+- **不过度设计**：不在细节上纠缠，不预设过多假想需求。先做出来能用的版本，后续迭代优化
+
+### 经验写入
+
+- **任务完成后自省**：任务做完后，Agent 应判断是否产生了值得记录的工程经验
+- **不记录琐碎操作**：一次性操作（改文案、调参数）不写入 `experiences/`
+- **必须有验证依据**：development 阶段新经验必须附带验证方式
+
+---
+
+## 经验文件怎么写
 
 每个经验是 `.lore/experiences/` 下的一个 Markdown 文件：
 
@@ -161,17 +174,6 @@ reviewed: false
 
 完整格式说明见 [docs/experience-format.md](docs/experience-format.md)。
 
-### 人工维护
-
-Agent 会自动写入和使用经验，但人工需要定期做几件事：
-
-| 操作 | 频率 | 做什么 |
-|------|------|--------|
-| **审核** | 每周 | 看 `experiences/` 中 `reviewed: false` 的条目，确认准确性 |
-| **晋升** | 有空时 | 将反复使用的经验提升到 `patterns/` |
-| **清理** | 每月 | 删除 `runs/` 中 30 天以上的日志 |
-| **归档** | 季度 | 将 `status: stale` 的经验归档或删除 |
-
 ---
 
 ## 目录结构
@@ -182,11 +184,11 @@ Agent 会自动写入和使用经验，但人工需要定期做几件事：
 ├── identity.md           # 项目身份：名称、技术栈、约束、阶段
 ├── glossary.md           # 领域术语表
 ├── domain/               # 领域知识
-│   ├── INDEX.md          # 领域知识索引
-│   └── <topic>.md        # 具体领域知识
+│   ├── INDEX.md
+│   └── <topic>.md
 ├── experiences/          # 已验证的工程经验
-│   ├── INDEX.md          # 经验索引（触发条件 + 一行摘要）
-│   └── <experience>.md   # 单条经验
+│   ├── INDEX.md
+│   └── <experience>.md
 ├── decisions/            # 架构决策记录（ADR）
 │   └── <NNNN>-<slug>.md
 ├── patterns/             # 稳定工程模式（从经验晋升）
@@ -200,8 +202,6 @@ Agent 会自动写入和使用经验，但人工需要定期做几件事：
     ├── cursor.md
     └── gemini.md
 ```
-
-各目录职责：
 
 | 目录 | 存什么 | 生命周期 |
 |------|--------|---------|
@@ -272,9 +272,14 @@ patterns/ (稳定工程模式)
 
 ---
 
-## 跨平台兼容
+## 人工维护
 
-Lore 只是文件。任何能读 Markdown 的 LLM 都能用。平台专属的注入片段在 `.lore/_adapters/` 中——复制对应的到你平台的配置文件即可。
+| 操作 | 频率 | 做什么 |
+|------|------|--------|
+| **审核** | 每周 | 看 `experiences/` 中 `reviewed: false` 的条目，确认准确性 |
+| **晋升** | 有空时 | 将反复使用的经验提升到 `patterns/` |
+| **清理** | 每月 | 删除 `runs/` 中 30 天以上的日志 |
+| **归档** | 季度 | 将 `status: stale` 的经验归档或删除 |
 
 ---
 
@@ -283,6 +288,272 @@ Lore 只是文件。任何能读 Markdown 的 LLM 都能用。平台专属的注
 - [经验文件格式](docs/experience-format.md) — frontmatter 字段、正文结构、生命周期规则
 - [架构决策记录格式](docs/decision-format.md) — 何时创建 ADR、模板和编号规则
 
-## 许可证
+---
+
+# English
+
+## Why Lore
+
+AI coding agents are stateless across sessions. Every new conversation, the agent forgets:
+
+- What bugs you've fixed and how
+- What architectural decisions were made and why
+- What engineering patterns are specific to this project
+- What pitfalls to avoid
+
+| Approach | What it does | What's missing |
+|----------|-------------|----------------|
+| CLAUDE.md / AGENTS.md | Global behavior rules | No project-level experience, no lifecycle |
+| Agent memory (auto-memory) | User preferences | Bound to agent not project, flat structure |
+| Trellis | Full workflow management | Too heavy, controls entire dev process |
+| Skills | Reusable operation flows | Doesn't accumulate knowledge, no verification |
+
+**Lore fills the gap**: project-level, verified, lifecycle-managed engineering experiences.
+
+Lore is a directory convention (`.lore/`) that gives AI agents a structured place to manage project-level engineering experiences. It's platform-agnostic — any LLM that can read files can use it (Claude Code, Codex, Gemini, Cursor, etc.).
+
+---
+
+## Quick Start
+
+### Step 1: Initialize
+
+Navigate to your project root and run:
+
+```bash
+# Bash / Zsh / Git Bash
+curl -fsSL https://raw.githubusercontent.com/LS-plan/lore/main/scripts/init.sh | bash
+```
+
+```powershell
+# PowerShell
+irm https://raw.githubusercontent.com/LS-plan/lore/main/scripts/init.ps1 | iex
+```
+
+Or manually:
+
+```bash
+git clone https://github.com/LS-plan/lore.git /tmp/lore
+cp -r /tmp/lore/template/.lore .lore
+rm -rf /tmp/lore
+```
+
+### Step 2: Describe Your Project
+
+Edit `.lore/identity.md` with your project name, tech stack, and current phase:
+
+```markdown
+## Basics
+- **Project**: my-awesome-app
+- **Tech stack**: Python / FastAPI / Docker / PostgreSQL
+
+## Phase
+- **Current phase**: exploration
+```
+
+### Step 3: Inject into Your Agent Platform
+
+Copy the corresponding snippet from `.lore/_adapters/` into your platform config:
+
+| Platform | Config File | Adapter |
+|----------|------------|---------|
+| Claude Code | `CLAUDE.md` | `.lore/_adapters/claude-code.md` |
+| Codex | `AGENTS.md` | `.lore/_adapters/codex.md` |
+| Cursor | `.cursor/rules` | `.lore/_adapters/cursor.md` |
+| Gemini | `.gemini/` | `.lore/_adapters/gemini.md` |
+
+Or add this snippet directly to your project's `CLAUDE.md` (or equivalent):
+
+```markdown
+## Project Experience Framework (Lore)
+
+This project uses Lore for engineering experience management.
+On startup, read `.lore/INDEX.md` and load relevant experiences by task keywords.
+After tasks, write verified experiences to `.lore/experiences/` and update the index.
+Loop protection: if the same experience is loaded 2 times without resolving the issue, stop and report to user.
+```
+
+### Step 4: Start Working
+
+Just work normally. The agent reads `.lore/INDEX.md` at the start of each session and loads relevant experiences on demand.
+
+---
+
+## Expected LLM Behavior After Installation
+
+After installing Lore, the AI agent should exhibit the following behavior patterns:
+
+### First Contact with a Project
+
+- **Auto-form project understanding**: When the agent first encounters a project with `.lore/`, it defaults to reading `identity.md`, `INDEX.md`, `glossary.md`, and other files to proactively build a global understanding of the project — no extra user authorization needed for this step
+- **Auto-detect project info**: Project name, tech stack, etc. should be identified from `.lore/identity.md` and the directory structure, not by repeatedly asking the user
+
+### Executing Tasks
+
+- **Plan first**: After the user states a request, the agent first presents a complete plan (including files involved, steps, and any matched engineering experiences), then seeks confirmation on specific details that need user input (e.g., whether to initialize git, create new directories, etc.)
+- **Experience match notification**: When a task matches an existing engineering experience, reference it in the plan with a brief explanation
+- **Progressive confirmation**: Confirm details incrementally until a complete understanding is formed, rather than dumping all questions at once
+
+### Preventing Stalls
+
+- **Proactive progression**: If several conversation rounds show little progress (e.g., repeatedly confirming the same point, or the user hasn't given clear direction), the agent should proactively ask: "Shall I proceed based on my current understanding? We can adjust later."
+- **No over-engineering**: Don't obsess over details or assume hypothetical requirements. Build a working version first, iterate later
+
+### Writing Experiences
+
+- **Post-task reflection**: After completing a task, the agent should assess whether a reusable engineering experience was produced
+- **Skip trivial operations**: One-off operations (copy edits, parameter tweaks) don't go into `experiences/`
+- **Verification required**: In the development phase, new experiences must include verification methods
+
+---
+
+## Experience File Format
+
+Each experience is a Markdown file under `.lore/experiences/`:
+
+```markdown
+---
+id: docker-volume-vs-bake
+triggers:
+  - "Host file changes not reflected in container"
+  - "Changes lost after docker restart"
+scope: [Docker, Deployment]
+verified: 2026-06-03
+status: active
+impact: medium
+author: generated
+reviewed: false
+---
+
+# Docker: volume mount vs baked image
+
+## Symptom
+Modified code files on the host, but Docker container shows no changes.
+
+## Root Cause
+Code was COPYed into the image during docker build. Host files and container files are independent copies.
+
+## Solution
+Add a volume mount in docker-compose.yml.
+
+## Verification
+Edit host file → docker compose up -d → exec into container and confirm file is updated.
+```
+
+Key fields:
+- `triggers`: Match conditions — the agent uses these keywords to decide whether to load the experience
+- `status`: `active` / `stale` / `archived`
+- `impact`: `low` / `medium` / `high` / `critical`
+- `author`: `authored` (human-written) / `generated` (agent-produced)
+- `reviewed`: Whether it has been human-reviewed
+
+Full format spec: [docs/experience-format.md](docs/experience-format.md).
+
+---
+
+## Directory Structure
+
+```
+.lore/
+├── INDEX.md              # Root index — the only file the agent MUST read on startup
+├── identity.md           # Project identity: name, tech stack, constraints, phase
+├── glossary.md           # Domain glossary
+├── domain/               # Domain knowledge
+│   ├── INDEX.md
+│   └── <topic>.md
+├── experiences/          # Verified engineering experiences
+│   ├── INDEX.md
+│   └── <experience>.md
+├── decisions/            # Architecture Decision Records (ADR)
+│   └── <NNNN>-<slug>.md
+├── patterns/             # Stable engineering patterns (promoted from experiences)
+│   ├── INDEX.md
+│   └── <pattern>.md
+├── runs/                 # Task run logs (temporary evidence)
+│   └── <date>-<task>.yaml
+└── _adapters/            # Platform injection snippets
+    ├── claude-code.md
+    ├── codex.md
+    ├── cursor.md
+    └── gemini.md
+```
+
+| Directory | Contents | Lifecycle |
+|-----------|----------|-----------|
+| `identity.md` | Project tech stack, constraints, current phase | Long-term, occasional updates |
+| `glossary.md` | Domain term definitions | Long-term, continuously growing |
+| `domain/` | Domain knowledge (business logic, protocol details) | Long-term |
+| `experiences/` | Verified engineering experiences | Medium-term, may expire |
+| `decisions/` | Architecture decision records | Long-term |
+| `patterns/` | Stable engineering patterns | Long-term |
+| `runs/` | Task run logs | Short-term (30-day cleanup) |
+
+---
+
+## Two Phases
+
+### Exploration
+
+Early project stage, or when the agent first encounters the project. Set `phase: exploration` in `identity.md`.
+
+- Agent proactively writes to `domain/`, `glossary.md`, `experiences/`
+- Low write threshold — record valuable observations first, human review later
+- Generated entries marked `reviewed: false`
+
+### Development
+
+Mature project with accumulated experience library. Set `phase: development` in `identity.md`.
+
+- Agent primarily reads, selectively writes
+- Unverified observations go to `runs/` only, not directly to `experiences/`
+- New experiences must have verification evidence
+- Lifecycle rules (expiry / archival) actively enforced
+
+Typically switch to development after 5+ verified experiences and `domain/` covers core areas.
+
+---
+
+## Experience Lifecycle (PDCA)
+
+```
+Observation / Hypothesis
+    ↓
+runs/ (temporary run logs, 30-day cleanup)
+    ↓  [verified + reusable]
+experiences/ (verified, status: active)
+    ↓  [3+ uses, >80% success rate, human reviewed]
+patterns/ (stable engineering patterns)
+    ↓  [further solidified into executable flows]
+Becomes a standalone Skill
+
+Retirement:
+  90 days unused → status: stale
+  Another 90 days unused → status: archived
+  Superseded → directly archived
+  impact: critical → exempt from auto-expiry
+```
+
+---
+
+## Built-in Safeguards
+
+| Mechanism | Rule |
+|-----------|------|
+| **Loop protection** | Same experience loaded 2 times without resolving → stop and report to user |
+| **Write gating** | Development phase: unverified entries cannot enter `experiences/` |
+| **Load limit** | Max 5 experiences per task (sorted by impact) |
+| **Index consistency** | Index must be updated after every experience add/remove |
+| **Self-review ban** | Agent cannot set `reviewed: true` on its own generated entries |
+
+---
+
+## Docs
+
+- [Experience File Format](docs/experience-format.md) — Frontmatter fields, body structure, lifecycle rules
+- [Architecture Decision Record Format](docs/decision-format.md) — When to create an ADR, template, numbering
+
+---
+
+## License
 
 MIT
