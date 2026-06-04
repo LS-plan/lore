@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lore-framework"
-version = "0.2.0"
+version = "0.3.0"
 description = "Project Experience Framework — let AI agents accumulate, retrieve, and retire engineering experiences."
 readme = "README.md"
 license = "MIT"

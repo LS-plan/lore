@@ -5,6 +5,8 @@ from pathlib import Path
 
 from lore_framework.constants import LORE_DIR, DIRS, GITKEEP_DIRS, TEMPLATE_VERSION
 from lore_framework.templates import load_all_templates
+from lore_framework.commands.inject import inject_adapters, create_and_inject
+from lore_framework.registry import register_project
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -31,7 +33,6 @@ def cmd_init(args: argparse.Namespace) -> int:
         target = lore_path / rel_path
         target.parent.mkdir(parents=True, exist_ok=True)
 
-        # Patch project-specific info
         if rel_path in ("identity.md", "INDEX.md"):
             content = content.replace("[project name]", project_name)
         if rel_path == "identity.md":
@@ -51,9 +52,20 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     file_count = sum(1 for _ in lore_path.rglob("*") if _.is_file())
     print(f"\nDone! Lore initialized at {LORE_DIR}/ ({file_count} files)")
-    print()
-    print("Next steps:")
-    print(f"  1. Edit {LORE_DIR}/identity.md to refine your project description")
-    print(f"  2. Copy the adapter snippet from {LORE_DIR}/_adapters/ into your platform config")
-    print(f"  3. Start working — your agent reads {LORE_DIR}/INDEX.md on each session")
+
+    # Auto-inject adapter into detected platform config
+    print("\nDetecting platform config files...")
+    injected = inject_adapters(Path.cwd())
+
+    if injected == 0:
+        platform = getattr(args, "platform", None)
+        injected = create_and_inject(Path.cwd(), project_name, platform=platform)
+    else:
+        print(f"\nAdapter auto-injected into {injected} config file(s).")
+
+    # Register in global ~/.lore/registry.json
+    register_project(str(Path.cwd()), project_name, phase)
+    print(f"  Registered in ~/.lore/registry.json")
+
+    print(f"\nStart working — your agent reads {LORE_DIR}/INDEX.md on each session.")
     return 0

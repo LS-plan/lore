@@ -141,21 +141,46 @@ Add the following to your project's `CLAUDE.md`:
 
 This project uses Lore for engineering experience management.
 
-**On startup**: Read `.lore/INDEX.md`. Match your current task against listed keywords.
-Only load deeper files (experiences, domain knowledge) if they're relevant to your task.
+### Startup Protocol
 
-**After completing a task**: If you discovered a new verified pattern or pitfall:
-1. Write it to `.lore/experiences/<id>.md` using the experience format
-2. Update `.lore/experiences/INDEX.md` and `.lore/INDEX.md`
+1. Check `.lore/.disabled` — if it exists, skip all Lore processing
+2. Read `.lore/INDEX.md` — scan keywords and experience summaries
+3. Match your current task against listed keywords (do NOT load all experiences)
 
-**Loop protection**: If the same experience has been loaded 2 times in this session
-without resolving the issue, stop and ask the user for guidance.
+### Response Prefix
 
-**Write rules**:
-- Exploration phase: write freely, mark `reviewed: false` for generated entries
-- Development phase: unverified observations go to `.lore/runs/` only
-- Never set `reviewed: true` on your own generated entries
-- Max 5 experiences loaded per task
+When any Lore experience is loaded or referenced, prefix your response with `[Lore]`.
+This signals to the user that project experience influenced the response.
+
+### Layered Architecture (Progressive Disclosure)
+
+Experiences are scored by FHQ-Treap (frequency × impact × recency). Three layers:
+
+- **L1 (Hot)**: High-score experiences — summaries shown in INDEX, load full file on keyword match
+- **L2 (Warm)**: Medium-score — only load when task keywords match triggers
+- **L3 (Cold)**: Low-score or stale — normally skipped, but may be recalled via mutation
+
+Progressive disclosure: start with INDEX summaries → if keywords match, load the full
+experience file → if still unresolved, check domain/ and patterns/. Never bulk-load.
+
+### After Task
+
+If you discovered a new verified pattern or pitfall:
+1. **Dedup check**: Compare triggers with existing experiences. If similarity > 70%, update the existing entry instead of creating a new one
+2. Write to `.lore/experiences/<id>.md` with frontmatter (id, triggers, scope, impact, status, verified, author: generated, reviewed: false)
+3. If promoting from `runs/`, keep `source_run` field for traceability
+4. Update `.lore/experiences/INDEX.md` and `.lore/INDEX.md`
+
+### Safeguards
+
+- **Loop protection**: Same experience loaded 2× without resolving → stop, ask user
+- **Max 5 experiences** per task (sorted by impact: critical > high > medium > low)
+- **Write rules**: exploration phase → write freely; development phase → unverified goes to runs/ only
+- **Self-review ban**: Never set `reviewed: true` on your own generated entries
+
+### Toggle
+
+User can run `lore turnoff` / `lore turnon` to disable/enable Lore processing.
 ```
 """,
     "_adapters/codex.md": """\
@@ -168,14 +193,17 @@ Add the following to your project's `AGENTS.md`:
 
 This project uses Lore for engineering experience management.
 
-On startup: Read `.lore/INDEX.md`. Match your current task against listed keywords.
-Only load deeper files if relevant.
+**Startup**: Check `.lore/.disabled` — if present, skip Lore. Otherwise read `.lore/INDEX.md`,
+match task keywords. Prefix responses with `[Lore]` when experience is loaded.
 
-After task: Write verified findings to `.lore/experiences/`, update indexes.
+**Layers**: L1 (hot, always in INDEX) → L2 (warm, keyword match) → L3 (cold, mutation recall).
+Progressive disclosure: INDEX summary first, full file only on match. Max 5 per task.
 
-Loop protection: Same experience loaded 2x without resolution → stop, ask user.
-Write rules: Development phase requires verification evidence for new experiences.
-Max 5 experiences per task.
+**After task**: Dedup check triggers (>70% similarity → merge). Write verified findings to
+`.lore/experiences/`, keep `source_run` if promoted from runs/. Update indexes.
+
+**Safeguards**: Loop protection (2× same experience → stop). Development phase requires
+verification. Never self-review. Toggle: `lore turnoff` / `lore turnon`.
 ```
 """,
     "_adapters/cursor.md": """\
@@ -187,23 +215,32 @@ Add the following to `.cursor/rules`:
 ## Project Experience (Lore)
 
 This project uses Lore (.lore/) for engineering experience management.
-On startup, read .lore/INDEX.md and match task keywords.
-Load relevant experiences from .lore/experiences/ as needed.
-After verified work, update experiences and indexes.
+
+Startup: check .lore/.disabled, then read .lore/INDEX.md. Match task keywords.
+Prefix responses with [Lore] when experience is loaded.
+Layers: L1 hot → L2 warm (keyword match) → L3 cold (mutation recall only).
+Load INDEX summary first, full files only on match. Max 5 per task.
+After task: dedup check, write verified experiences, update indexes.
 Loop protection: same experience 2x without resolution → ask user.
+Toggle: lore turnoff / lore turnon.
 ```
 """,
     "_adapters/gemini.md": """\
 # Gemini Adapter
 
-For Google Gemini / AI Studio projects, add this to your project instructions or `.gemini/` configuration:
+For Google Gemini / AI Studio projects, add this to your `.gemini/` configuration:
 
 ```
 This project uses Lore (.lore/) for engineering experience management.
-Read .lore/INDEX.md at the start of each task.
+
+Startup: check .lore/.disabled, then read .lore/INDEX.md.
 Match task keywords against experience triggers.
-Load relevant experiences on demand.
-Write verified findings back to .lore/experiences/ and update indexes.
+Prefix responses with [Lore] when any experience is loaded.
+Three layers: L1 (hot, always visible) → L2 (warm, keyword match) → L3 (cold, mutation).
+Progressive disclosure: INDEX summary → full file on match → domain/patterns if needed.
+Max 5 experiences per task. Dedup before writing new experiences.
+Write verified findings to .lore/experiences/ and update indexes.
+Toggle: lore turnoff / lore turnon.
 ```
 """,
 }

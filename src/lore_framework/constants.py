@@ -4,7 +4,7 @@ from pathlib import Path
 
 LORE_DIR = ".lore"
 VERSION_FILE = ".version"
-TEMPLATE_VERSION = "0.2.0"
+TEMPLATE_VERSION = "0.3.0"
 
 DIRS = [
     "domain",

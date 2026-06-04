@@ -95,29 +95,15 @@ rm -rf /tmp/lore
 - **Current phase**: exploration
 ```
 
-### 第四步：注入到你的 Agent 平台
+### 第四步：开始使用
 
-从 `.lore/_adapters/` 中复制对应平台的片段到你的配置文件：
+`lore init` 会自动检测项目根目录的平台配置文件（`CLAUDE.md`、`AGENTS.md`、`.cursorrules`、`.gemini/`），并将 adapter 片段自动注入。**无需手动复制**。
 
-| 平台 | 配置文件 | 适配器 |
-|------|---------|--------|
-| Claude Code | `CLAUDE.md` | `.lore/_adapters/claude-code.md` |
-| Codex | `AGENTS.md` | `.lore/_adapters/codex.md` |
-| Cursor | `.cursor/rules` | `.lore/_adapters/cursor.md` |
-| Gemini | `.gemini/` | `.lore/_adapters/gemini.md` |
+如果 init 时配置文件还不存在，可以后续创建配置文件后运行：
 
-也可以直接在项目的 `CLAUDE.md`（或对应文件）中加一段：
-
-```markdown
-## 项目经验框架 (Lore)
-
-本项目使用 Lore 管理工程经验。
-启动时读 `.lore/INDEX.md`，按任务关键词决定是否加载深层内容。
-任务后如有已验证经验，写入 `.lore/experiences/` 并更新索引。
-循环保护：同一经验加载 2 次仍未解决问题时，停止并报告用户。
+```bash
+lore inject    # 手动注入 adapter 片段
 ```
-
-### 第五步：开始使用
 
 正常工作就行。Agent 会在每次会话开始时读 `.lore/INDEX.md`，按需加载相关经验。
 
@@ -135,10 +121,15 @@ lore update
 ### 其他命令
 
 ```bash
-lore stats                    # 查看经验统计
-lore suggest --task "xxx"     # 推荐相关经验（v0.3 实现 FHQ-Treap 调度）
-lore gc                       # 清理过期的 runs/ 日志
+lore stats                    # 查看经验统计（含 FHQ-Treap 层级分布）
+lore suggest --task "xxx"     # FHQ-Treap + 关键词混合检索推荐经验
+lore gc                       # 清理过期 runs/ + TTL 自动降级经验
 lore gc --dry-run             # 预览清理结果，不实际删除
+lore turnoff                  # 关闭 Lore 处理（当前项目）
+lore turnon                   # 重新启用 Lore
+lore inject                   # 重新注入 adapter 片段到平台配置
+lore list                     # 列出所有已注册的 Lore 项目
+lore list --global            # 跨项目汇总统计
 ```
 
 ---
@@ -168,6 +159,73 @@ lore gc --dry-run             # 预览清理结果，不实际删除
 - **任务完成后自省**：任务做完后，Agent 应判断是否产生了值得记录的工程经验
 - **不记录琐碎操作**：一次性操作（改文案、调参数）不写入 `experiences/`
 - **必须有验证依据**：development 阶段新经验必须附带验证方式
+
+---
+
+## FHQ-Treap 智能检索引擎
+
+v0.3 引入了基于 FHQ-Treap（无旋树堆）的经验评分与检索系统。
+
+### 评分公式（蚁群信息素启发）
+
+```
+score = base_impact × (1 - decay_rate)^days_unused × (log₂(use_count + 1) + 1)
+```
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| `base_impact` | critical=10, high=7, medium=4, low=1 | 基础权重 |
+| `decay_rate` | 0.02 | 每日衰减系数 |
+| `use_count` | 历史使用次数 | 频率奖励（对数） |
+
+### 三层架构
+
+评分决定经验所在层级：
+
+| 层级 | 评分阈值 | 行为 |
+|------|---------|------|
+| **L1 (热)** | > 5.0 | 摘要始终在 INDEX 中，关键词命中加载全文 |
+| **L2 (温)** | 1.0 ~ 5.0 | 仅在任务关键词匹配 triggers 时加载 |
+| **L3 (冷)** | < 1.0 | 通常跳过，仅通过变异召回 |
+
+### 混合检索
+
+```
+final_score = α × keyword_relevance + (1 - α) × normalized_treap_score
+```
+
+- `keyword_relevance`：任务描述与 triggers 的 Jaccard 相似度
+- `α = 0.6`：关键词权重占主导
+
+### 变异机制（蚁群算法变异）
+
+每次检索有 ε = 5% 概率从 L3 / archived 中随机召回一条经验，防止有用但低频的经验被永久遗忘。类似蚁群算法中的随机探索（变异），避免陷入局部最优。
+
+### `[Lore]` 响应前缀
+
+当 Agent 加载了任何 Lore 经验时，会在回复前标注 `[Lore]`，让用户清楚知道项目经验参与了决策。
+
+### 开关控制
+
+```bash
+lore turnoff    # 关闭 Lore 处理
+lore turnon     # 重新启用
+```
+
+关闭后 Agent 跳过 `.lore/` 的所有处理。
+
+---
+
+## 全局项目管理
+
+Lore 在 `~/.lore/` 维护一个全局注册表，跟踪所有使用 Lore 的项目。
+
+```bash
+lore list                     # 列出所有项目
+lore list --global            # 汇总统计：总经验数、层级分布、每项目明细
+```
+
+`lore init` 时自动注册。
 
 ---
 
@@ -308,6 +366,11 @@ patterns/ (稳定工程模式)
 | **加载上限** | 每次任务最多加载 5 条经验（按 impact 排序） |
 | **索引一致性** | 每次增删经验后必须更新索引 |
 | **自审禁止** | Agent 不能对自己生成的条目设置 `reviewed: true` |
+| **结构化去重** | 写入新经验前检查 triggers 相似度，> 70% 合并而非新建 |
+| **可追溯压缩** | 从 `runs/` 晋升到 `experiences/` 时保留 `source_run` 字段 |
+| **TTL 自动遗忘** | 90 天未用 → stale，180 天 → archived，critical 豁免 |
+| **变异召回** | 5% 概率从 archived/L3 中随机召回经验（防止永久遗忘） |
+| **开关控制** | `lore turnoff` / `lore turnon` 控制 Lore 处理的开关 |
 
 ---
 

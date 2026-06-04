@@ -95,29 +95,15 @@ Edit `.lore/identity.md` with your project name, tech stack, and current phase:
 - **Current phase**: exploration
 ```
 
-### Step 4: Inject into Your Agent Platform
+### Step 4: Start Working
 
-Copy the corresponding snippet from `.lore/_adapters/` into your platform config:
+`lore init` automatically detects platform config files in your project root (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.gemini/`) and injects the adapter snippet. **No manual copying needed.**
 
-| Platform | Config File | Adapter |
-|----------|------------|---------|
-| Claude Code | `CLAUDE.md` | `.lore/_adapters/claude-code.md` |
-| Codex | `AGENTS.md` | `.lore/_adapters/codex.md` |
-| Cursor | `.cursor/rules` | `.lore/_adapters/cursor.md` |
-| Gemini | `.gemini/` | `.lore/_adapters/gemini.md` |
+If the config file doesn't exist at init time, create it later and run:
 
-Or add this snippet directly to your project's `CLAUDE.md` (or equivalent):
-
-```markdown
-## Project Experience Framework (Lore)
-
-This project uses Lore for engineering experience management.
-On startup, read `.lore/INDEX.md` and load relevant experiences by task keywords.
-After tasks, write verified experiences to `.lore/experiences/` and update the index.
-Loop protection: if the same experience is loaded 2 times without resolving the issue, stop and report to user.
+```bash
+lore inject    # Manually inject adapter snippet
 ```
-
-### Step 5: Start Working
 
 Just work normally. The agent reads `.lore/INDEX.md` at the start of each session and loads relevant experiences on demand.
 
@@ -136,9 +122,14 @@ lore update
 
 ```bash
 lore stats                    # View experience statistics
-lore suggest --task "xxx"     # Suggest relevant experiences (FHQ-Treap scheduling in v0.3)
-lore gc                       # Clean up expired runs/ logs
+lore suggest --task "xxx"     # FHQ-Treap + keyword hybrid retrieval
+lore gc                       # Clean up expired runs/ + TTL auto-expiry
 lore gc --dry-run             # Preview cleanup without deleting
+lore turnoff                  # Disable Lore processing (current project)
+lore turnon                   # Re-enable Lore processing
+lore inject                   # Re-inject adapter snippet into platform config
+lore list                     # List all registered Lore projects
+lore list --global            # Aggregated statistics across all projects
 ```
 
 ---
@@ -168,6 +159,71 @@ After installing Lore, the AI agent should exhibit the following behavior patter
 - **Post-task reflection**: After completing a task, the agent should assess whether a reusable engineering experience was produced
 - **Skip trivial operations**: One-off operations (copy edits, parameter tweaks) don't go into `experiences/`
 - **Verification required**: In the development phase, new experiences must include verification methods
+
+---
+
+## FHQ-Treap Intelligent Retrieval Engine
+
+v0.3 introduces an FHQ-Treap (Split-Merge Treap) based experience scoring and retrieval system.
+
+### Scoring Formula (Ant Colony Pheromone Inspired)
+
+```
+score = base_impact × (1 - decay_rate)^days_unused × (log₂(use_count + 1) + 1)
+```
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `base_impact` | critical=10, high=7, medium=4, low=1 | Base weight |
+| `decay_rate` | 0.02 | Daily decay coefficient |
+| `use_count` | Historical usage count | Frequency bonus (logarithmic) |
+
+### Three-Layer Architecture
+
+Scores determine which layer an experience belongs to:
+
+| Layer | Score Threshold | Behavior |
+|-------|----------------|----------|
+| **L1 (Hot)** | > 5.0 | Summary always in INDEX, full file loaded on keyword match |
+| **L2 (Warm)** | 1.0 ~ 5.0 | Only loaded when task keywords match triggers |
+| **L3 (Cold)** | < 1.0 | Normally skipped, only recalled via mutation |
+
+### Hybrid Retrieval
+
+```
+final_score = α × keyword_relevance + (1 - α) × normalized_treap_score
+```
+
+- `keyword_relevance`: Jaccard similarity between task description and triggers
+- `α = 0.6`: Keyword weight dominates
+
+### Mutation Mechanism (Ant Colony Mutation)
+
+Each retrieval has ε = 5% probability to randomly recall an experience from L3/archived, preventing useful but low-frequency experiences from being permanently forgotten. Similar to random exploration (mutation) in ant colony algorithms, avoiding local optima.
+
+### `[Lore]` Response Prefix
+
+When an agent loads any Lore experience, it prefixes the response with `[Lore]` so the user knows project experience influenced the decision.
+
+### Toggle Control
+
+```bash
+lore turnoff    # Disable Lore processing
+lore turnon     # Re-enable
+```
+
+---
+
+## Global Project Management
+
+Lore maintains a global registry at `~/.lore/` that tracks all projects using Lore.
+
+```bash
+lore list                     # List all projects
+lore list --global            # Aggregated stats: total experiences, layer distribution, per-project details
+```
+
+Projects are automatically registered during `lore init`.
 
 ---
 
@@ -308,6 +364,11 @@ Retirement:
 | **Load limit** | Max 5 experiences per task (sorted by impact) |
 | **Index consistency** | Index must be updated after every experience add/remove |
 | **Self-review ban** | Agent cannot set `reviewed: true` on its own generated entries |
+| **Structured dedup** | Check trigger similarity before writing; > 70% → merge, don't create new |
+| **Traceable compression** | Keep `source_run` field when promoting from `runs/` to `experiences/` |
+| **TTL auto-forgetting** | 90 days unused → stale, 180 days → archived, critical exempt |
+| **Mutation recall** | 5% chance to recall archived/L3 experience (prevents permanent forgetting) |
+| **Toggle control** | `lore turnoff` / `lore turnon` to disable/enable Lore processing |
 
 ---
 
