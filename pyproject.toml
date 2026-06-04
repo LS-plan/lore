@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lore-framework"
+version = "0.2.0"
+description = "Project Experience Framework — let AI agents accumulate, retrieve, and retire engineering experiences."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+keywords = ["ai", "agent", "experience", "framework", "lore"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+[project.scripts]
+lore = "lore_framework.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/LS-plan/lore"
+Repository = "https://github.com/LS-plan/lore"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lore_framework"]

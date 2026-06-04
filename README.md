@@ -38,9 +38,30 @@ Lore 是一个目录约定（`.lore/`），为 AI Agent 提供一个结构化的
 
 ## 快速开始
 
-### 第一步：初始化
+### 第一步：安装 CLI（推荐）
+
+```bash
+pip install lore-framework
+```
+
+CLI 跨平台（Windows / macOS / Linux），行为一致，支持增量更新。
+
+### 第二步：初始化
 
 进入你的项目根目录，运行：
+
+```bash
+lore init
+```
+
+CLI 会自动从目录名识别项目名称。你也可以手动指定：
+
+```bash
+lore init --project my-awesome-app --phase exploration
+```
+
+<details>
+<summary>备选方案：不安装 CLI 的快速初始化</summary>
 
 ```bash
 # Bash / Zsh / Git Bash
@@ -52,15 +73,16 @@ curl -fsSL https://raw.githubusercontent.com/LS-plan/lore/main/scripts/init.sh |
 irm https://raw.githubusercontent.com/LS-plan/lore/main/scripts/init.ps1 | iex
 ```
 
-或者手动复制：
-
 ```bash
+# 手动复制
 git clone https://github.com/LS-plan/lore.git /tmp/lore
 cp -r /tmp/lore/template/.lore .lore
 rm -rf /tmp/lore
 ```
 
-### 第二步：填写项目信息
+</details>
+
+### 第三步：填写项目信息
 
 编辑 `.lore/identity.md`，写入你的项目名称、技术栈和当前阶段：
 
@@ -73,7 +95,7 @@ rm -rf /tmp/lore
 - **Current phase**: exploration
 ```
 
-### 第三步：注入到你的 Agent 平台
+### 第四步：注入到你的 Agent 平台
 
 从 `.lore/_adapters/` 中复制对应平台的片段到你的配置文件：
 
@@ -95,9 +117,29 @@ rm -rf /tmp/lore
 循环保护：同一经验加载 2 次仍未解决问题时，停止并报告用户。
 ```
 
-### 第四步：开始使用
+### 第五步：开始使用
 
 正常工作就行。Agent 会在每次会话开始时读 `.lore/INDEX.md`，按需加载相关经验。
+
+### 增量更新
+
+已安装 CLI 的项目，版本升级时只需：
+
+```bash
+pip install --upgrade lore-framework
+lore update
+```
+
+`lore update` 只添加新版本引入的文件和字段，**不会覆盖你已修改的内容**（如 `identity.md`、`glossary.md` 等）。
+
+### 其他命令
+
+```bash
+lore stats                    # 查看经验统计
+lore suggest --task "xxx"     # 推荐相关经验（v0.3 实现 FHQ-Treap 调度）
+lore gc                       # 清理过期的 runs/ 日志
+lore gc --dry-run             # 预览清理结果，不实际删除
+```
 
 ---
 

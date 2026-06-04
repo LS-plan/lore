@@ -38,9 +38,30 @@ Lore is a directory convention (`.lore/`) that gives AI agents a structured plac
 
 ## Quick Start
 
-### Step 1: Initialize
+### Step 1: Install CLI (Recommended)
+
+```bash
+pip install lore-framework
+```
+
+The CLI is cross-platform (Windows / macOS / Linux) with consistent behavior and incremental update support.
+
+### Step 2: Initialize
 
 Navigate to your project root and run:
+
+```bash
+lore init
+```
+
+The CLI auto-detects the project name from the directory. You can also specify it manually:
+
+```bash
+lore init --project my-awesome-app --phase exploration
+```
+
+<details>
+<summary>Alternative: Quick init without installing CLI</summary>
 
 ```bash
 # Bash / Zsh / Git Bash
@@ -52,15 +73,16 @@ curl -fsSL https://raw.githubusercontent.com/LS-plan/lore/main/scripts/init.sh |
 irm https://raw.githubusercontent.com/LS-plan/lore/main/scripts/init.ps1 | iex
 ```
 
-Or manually:
-
 ```bash
+# Manual copy
 git clone https://github.com/LS-plan/lore.git /tmp/lore
 cp -r /tmp/lore/template/.lore .lore
 rm -rf /tmp/lore
 ```
 
-### Step 2: Describe Your Project
+</details>
+
+### Step 3: Describe Your Project
 
 Edit `.lore/identity.md` with your project name, tech stack, and current phase:
 
@@ -73,7 +95,7 @@ Edit `.lore/identity.md` with your project name, tech stack, and current phase:
 - **Current phase**: exploration
 ```
 
-### Step 3: Inject into Your Agent Platform
+### Step 4: Inject into Your Agent Platform
 
 Copy the corresponding snippet from `.lore/_adapters/` into your platform config:
 
@@ -95,9 +117,29 @@ After tasks, write verified experiences to `.lore/experiences/` and update the i
 Loop protection: if the same experience is loaded 2 times without resolving the issue, stop and report to user.
 ```
 
-### Step 4: Start Working
+### Step 5: Start Working
 
 Just work normally. The agent reads `.lore/INDEX.md` at the start of each session and loads relevant experiences on demand.
+
+### Incremental Updates
+
+For projects with the CLI installed, upgrading is simple:
+
+```bash
+pip install --upgrade lore-framework
+lore update
+```
+
+`lore update` only adds new files and fields introduced in the new version — it **never overwrites your modified files** (like `identity.md`, `glossary.md`, etc.).
+
+### Other Commands
+
+```bash
+lore stats                    # View experience statistics
+lore suggest --task "xxx"     # Suggest relevant experiences (FHQ-Treap scheduling in v0.3)
+lore gc                       # Clean up expired runs/ logs
+lore gc --dry-run             # Preview cleanup without deleting
+```
 
 ---
 
