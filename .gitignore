@@ -3,3 +3,10 @@ node_modules/
 Thumbs.db
 *.swp
 *.swo
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
